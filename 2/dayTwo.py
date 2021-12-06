@@ -30,15 +30,9 @@ def pos(string):
 with open("/Users/bryce/Downloads/inputDay2.txt") as d:
   data = d.readlines()
 
-# i = 0
-# while i < 10:
-#   print(data[i])
-#   i += 1
-
 aim = 0
 position = [0,0]
 
-# `command` is an Elf submarine command
 for command in data:
   pos(command)
 
