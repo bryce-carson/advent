@@ -53,7 +53,7 @@ recurse_filtrate_bits <- function(tibble, bit_position, gas) {
   ## FIXME: oxygen just "doesn't" work somehow.
   if (attr(tibble, "row.names") %>% length() <= 2) {
     if (gas == "O2") {
-      ## browser()
+      browser()
       tibble %>%
         verify(nrow(.) > 0) %>%
         verify(nrow(.) <= 2) %>%
@@ -96,6 +96,6 @@ map_dfr(
     tibble = data, bit_position = 1,
     gas = .x
   )
-) ## %>%
-  ## verify(nrow(.) == 2) %>%
-  ## summarize(lifeSupportRating = prod(map_dbl(nibblebyte, str_binary_to_decimal)))
+) %>%
+  verify(nrow(.) == 2) %>%
+  summarize(lifeSupportRating = prod(map_dbl(nibblebyte, str_binary_to_decimal)))
