@@ -3,14 +3,19 @@ library(magrittr)
 library(assertr)
 
 # Common operation
-input <- read_file("~/code/advent/three.text")
+input <- read_file("~/code/advent/three.txt")
+sample <- read_file("~/code/advent/three_sample.txt")
+eshoe <- read_file("~/code/advent/three_eshoe.txt")
+
+## NOTE: just change between input and sample to use the different data.
 data <- tibble(nibblebyte = unlist(str_split(input, "\n"))) %>%
   filter(nibblebyte != "") %>%
   mutate(bits = str_split(nibblebyte, ""))
+
 commonbits <- data %>%
   summarize(commonbit = unlist(
     map(
-      .x = 1:12,
+      .x = seq(str_length(data$nibblebyte)[1]),
       .f = ~ round(sum(as.numeric(map_chr(bits, .x))) /
         length(data$nibblebyte))
     )
@@ -44,60 +49,68 @@ commonbits %>% summarize(
 ## Part Two
 ## Frequent bit
 
-find_common_bit <- function(tibble, bit_position) {
-  summarize(tibble, commonbit = unlist(
-    map(
-      .x = bit_position,
-      .f = ~ round(sum(as.numeric(map_chr(bits, .x))) /
-        length(tibble$nibblebyte))
-    )
-    )) %>% as.character() %>% return()
+find_common_bit <- function(tibble, bit_position, gas) {
+  result <- summarize(tibble,
+    commonbit =
+      map_chr(
+        .x = bit_position,
+        .f = ~ sum(as.numeric(map_chr(bits, .x))) / nrow(tibble)
+      )
+  ) %>%
+    mutate(
+      commonbit = case_when(
+        and(commonbit == 0.5, gas == "O2") ~ "1",
+        and(commonbit == 0.5, gas == "CO2") ~ "0",
+        commonbit > 0.5 ~ "1",
+        commonbit < 0.5 ~ "0",
+      )
+    ) %>%
+    chuck("commonbit")
+  return(result)
 }
 
 recurse_filtrate_bits <- function(tibble, bit_position, gas) {
   ## NOTE: piping to `return()`, even in different conditions is problematic and
   ## can cause one of them, during a map over different input parameters, to
   ## return `NULL` despite a value existing.
-  if (attr(tibble, "row.names") %>% length() <= 2) {
+  if (nrow(tibble) <= 2) {
+    ## print(tibble)
     if (gas == "O2") {
-      return(
-        tibble %>%
+      result <- tibble %>%
         verify(nrow(.) > 0) %>%
         verify(nrow(.) <= 2) %>%
         filter(map(bits, bit_position) == "1") %>%
-        verify(is.null(.) == FALSE)
-      )
+        verify(is.null(.) == FALSE) %>%
+        verify(nrow(.) == 1)
+      return(result)
     }
     if (gas == "CO2") {
-      return(
-        tibble %>%
-          verify(nrow(.) > 0) %>%
-          verify(nrow(.) <= 2) %>%
-          filter(map(bits, bit_position) == "0") %>%
-          verify(is.null(.) == FALSE)
-      )
+      result <- tibble %>%
+        verify(nrow(.) > 0) %>%
+        verify(nrow(.) <= 2) %>%
+        filter(map(bits, bit_position) == "0") %>%
+        verify(is.null(.) == FALSE) %>%
+        verify(nrow(.) == 1)
+      return(result)
     }
   } else {
+    result <- tibble %>%
+      mutate(bitTruth = map2(
+        .x = bits,
+        .y = find_common_bit(tibble, bit_position, gas),
+        .f = ~ .x == .y
+      ))
     if (gas == "O2") {
-      result <- tibble %>%
-        mutate(bitTruth = map2(.x = bits,
-                               .y = find_common_bit(tibble, bit_position),
-                               .f = ~ .x == .y)) %>%
+      result <- result %>%
         filter(map(bitTruth, bit_position) == TRUE)
     } else {
-      result <- tibble %>%
-        mutate(bitTruth = map2(.x = bits,
-                               .y = find_common_bit(tibble, bit_position),
-                               .f = ~ .x == .y)) %>%
+      result <- result %>%
         filter(map(bitTruth, bit_position) == FALSE)
     }
-    recurse_filtrate_bits(result, bit_position = bit_position + 1, gas)
+
+    recurse_filtrate_bits(result, bit_position + 1, gas)
   }
 }
-
-## NOTE: ensure it works individually for debugging purposes.
-recurse_filtrate_bits(data, 1, "O2")
-recurse_filtrate_bits(data, 1, "CO2")
 
 ## Mapping over `c("O2", "CO2")`
 map_dfr(
@@ -108,4 +121,4 @@ map_dfr(
   )
 ) %>%
   verify(nrow(.) == 2) %>%
-  summarize(lifeSupportRating = prod(map_dbl(nibblebyte, str_binary_to_decimal)))
+  mutate(lifeSupportRating = prod(map_dbl(nibblebyte, str_binary_to_decimal)))
