@@ -3,7 +3,7 @@ library(magrittr)
 library(assertr)
 
 # Common operation
-input <- read_file("/Users/bryce/code/advent/three.text")
+input <- read_file("~/code/advent/three.text")
 data <- tibble(nibblebyte = unlist(str_split(input, "\n"))) %>%
   filter(nibblebyte != "") %>%
   mutate(bits = str_split(nibblebyte, ""))
@@ -33,8 +33,13 @@ commonbits %>% summarize(
     commonbits == 0 ~ 1,
     commonbits == 1 ~ 0
   ))
-  ) %>% ## FIXME
-  str_glue_data("Gamma rate: {paste0(str_c(gammarate, collapse = ''))},\nEpsilon rate: {paste0(str_c(epsilonrate, collapse = ''))}\nPower consumption: {prod(unlist( map_dbl(.x = c(gammarate, epsilonrate), .f = ~ str_binary_to_decimal(paste0(str_c(.x, collapse = '')))) ))}")
+  ) %>%
+  summarize(gamma_rate = str_c(gammarate, collapse = ''),
+         epsilon_rate = str_c(epsilonrate, collapse = ''),
+         power_consumption = prod(
+           map_dbl(.x = c(gamma_rate,
+                          epsilon_rate),
+                   .f = str_binary_to_decimal)))
 
 ## Part Two
 ## Frequent bit
@@ -50,22 +55,27 @@ find_common_bit <- function(tibble, bit_position) {
 }
 
 recurse_filtrate_bits <- function(tibble, bit_position, gas) {
-  ## FIXME: oxygen just "doesn't" work somehow.
+  ## NOTE: piping to `return()`, even in different conditions is problematic and
+  ## can cause one of them, during a map over different input parameters, to
+  ## return `NULL` despite a value existing.
   if (attr(tibble, "row.names") %>% length() <= 2) {
     if (gas == "O2") {
-      browser()
-      tibble %>%
+      return(
+        tibble %>%
         verify(nrow(.) > 0) %>%
         verify(nrow(.) <= 2) %>%
         filter(map(bits, bit_position) == "1") %>%
-        return()
+        verify(is.null(.) == FALSE)
+      )
     }
     if (gas == "CO2") {
-      tibble %>%
-        verify(nrow(.) > 0) %>%
-        verify(nrow(.) <= 2) %>%
-        filter(map(bits, bit_position) == "0") %>%
-        return()
+      return(
+        tibble %>%
+          verify(nrow(.) > 0) %>%
+          verify(nrow(.) <= 2) %>%
+          filter(map(bits, bit_position) == "0") %>%
+          verify(is.null(.) == FALSE)
+      )
     }
   } else {
     if (gas == "O2") {
@@ -85,7 +95,7 @@ recurse_filtrate_bits <- function(tibble, bit_position, gas) {
   }
 }
 
-## With `... %>% print() %>% return()`
+## NOTE: ensure it works individually for debugging purposes.
 recurse_filtrate_bits(data, 1, "O2")
 recurse_filtrate_bits(data, 1, "CO2")
 
